@@ -2199,7 +2199,7 @@ func (m model) transcriptView() string {
 	if m.helpOverlay {
 		helpOverlayContent = m.renderKeybindingHelpOverlay(width)
 	}
-	
+
 	suggestionOverlay := m.suggestionOverlay(width)
 	providerOverlay := m.providerWizardOverlay(width)
 	mcpAddOverlay := m.mcpAddWizardOverlay(width)
