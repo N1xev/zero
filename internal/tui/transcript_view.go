@@ -8,6 +8,9 @@ import (
 func (m model) toggleDetailedTranscript() model {
 	m.transcriptDetailed = !m.transcriptDetailed
 	m.clearSuggestions()
+	if m.fileView.active {
+		m = m.exitFileView()
+	}
 	if m.picker != nil && m.picker.kind == pickerTheme {
 		// Dropping a theme picker mid-preview must undo the live palette, or the
 		// previewed theme would stick while m.themeMode still holds the old one.
