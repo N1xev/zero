@@ -2216,7 +2216,7 @@ func (m model) transcriptView() string {
 	if m.transcriptEmpty() && !m.pending && viewportOverlay != "" {
 		emptyOverlay = viewportOverlay
 	}
-	bodyItems := m.transcriptBodyItems(width, emptyOverlay)
+	bodyItems := m.transcriptBodyItems(width, emptyOverlay, false)
 
 	footer := m.footerView(width)
 
@@ -2256,7 +2256,7 @@ func (m model) twoColumnTranscriptView() string {
 	width := chatW
 
 	suggestionOverlay := m.suggestionOverlay(width)
-	bodyItems := m.transcriptBodyItems(width, "")
+	bodyItems := m.transcriptBodyItems(width, "", false)
 	footer := m.footerView(width)
 	overlayForViewport := suggestionOverlay
 	if m.transcriptEmpty() && !m.pending {
@@ -2682,7 +2682,7 @@ func (m model) chatTranscriptViewport() (transcriptViewport, bool) {
 		return transcriptViewport{}, false
 	}
 	width := m.chatColumnWidth()
-	items := m.transcriptBodyItems(width, "")
+	items := m.transcriptBodyItems(width, "", false)
 	body := measureTranscriptBodyItems(items, m.transcriptBodyHeights)
 	frame := m.scrollableTranscriptFrame(m.pinnedTitleBar(width), m.footerView(width))
 	return transcriptViewportForLayout(body, frame, m.chatScrollOffset), true

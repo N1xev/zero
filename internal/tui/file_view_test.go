@@ -143,7 +143,7 @@ func TestFileViewSwapsTranscriptBody(t *testing.T) {
 	m := filesPanelTestModel()
 	m = m.openFileView("internal/tui/sidebar.go")
 
-	items := m.transcriptBodyItems(m.chatColumnWidth(), "")
+	items := m.transcriptBodyItems(m.chatColumnWidth(), "", false)
 	if len(items) != 1 {
 		t.Fatalf("file view should swap the body to a single block item, got %d items", len(items))
 	}
