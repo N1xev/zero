@@ -14,55 +14,34 @@ func (m model) toggleDetailedTranscript() model {
 	return m
 }
 
+// detailedTranscriptView renders the full (uncapped) transcript viewport.
+// Tool output that would be truncated in the live view appears in full here.
 func (m model) detailedTranscriptView() string {
 	width := chatWidth(m.width)
-	rc := buildRowContext(m.transcript)
-	renderer := m
-	renderer.pending = false
-	renderer.activeRunID = 0
+	items := m.transcriptBodyItems(width, "", true)
 
-	var builder strings.Builder
-	builder.WriteString(detailedTranscriptHeader(width))
-	builder.WriteString("\n")
-	builder.WriteString(zeroTheme.line.Render(strings.Repeat("-", width)))
-	builder.WriteString("\n")
+	header := detailedTranscriptHeader(width) + "\n" + zeroTheme.line.Render(strings.Repeat("-", width))
+	footer := m.detailedTranscriptFooter(width)
 
-	shownAny := false
-	var previousKind rowKind
-	for _, row := range m.transcript {
-		if rc.skip(row) {
-			continue
-		}
-		rendered := ""
-		if row.kind == rowWelcome {
-			rendered = fitStyledLine(zeroTheme.faint.Render(row.text), width)
-		} else {
-			rendered = renderer.renderRowDetailed(row, width, rc)
-		}
-		if rendered == "" {
-			continue
-		}
-		if shownAny && startsTurn(row.kind) {
-			builder.WriteString("\n")
-		}
-		if shownAny && previousKind == rowUser && row.kind == rowReasoning {
-			builder.WriteString("\n")
-		}
-		builder.WriteString(rendered)
-		builder.WriteString("\n")
-		shownAny = true
-		previousKind = row.kind
+	if m.altScreen && m.height > 0 {
+		return m.scrollableTranscriptItemsView(header, items, footer, width, "")
 	}
+	// Popup/fallback: render the full body without viewport clipping.
+	layout := layoutTranscriptBodyItems(items)
+	return header + "\n" + layout.String() + "\n" + footer
+}
 
-	if !shownAny {
-		builder.WriteString(zeroTheme.faint.Render("No transcript rows."))
-		builder.WriteString("\n")
+// detailedTranscriptFooter builds the one-line footer for the detailed transcript
+// view: copy status when active, otherwise the key hint with jump-to-bottom cue.
+func (m model) detailedTranscriptFooter(width int) string {
+	if copyStatus := strings.TrimSpace(m.copyStatus); copyStatus != "" {
+		return rightAlignedLine(zeroTheme.ink.Render(copyStatus), width)
 	}
-
-	builder.WriteString(zeroTheme.line.Render(strings.Repeat("-", width)))
-	builder.WriteString("\n")
-	builder.WriteString(fitStyledLine(zeroTheme.faint.Render("Esc close | Ctrl+O toggle"), width))
-	return builder.String()
+	hint := zeroTheme.faint.Render("Esc close | Ctrl+O toggle")
+	if jt := m.jumpToBottomHint(); jt != "" {
+		return fitStyledLine(joinHeaderLine(hint, jt, width), width)
+	}
+	return fitStyledLine(hint, width)
 }
 
 func detailedTranscriptHeader(width int) string {

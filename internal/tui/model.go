@@ -1362,7 +1362,7 @@ func (m model) updateModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case keyIs(msg, tea.KeyPgUp):
 			if m.transcriptDetailed {
-				return m, nil
+				return m.scrollChat(m.chatPageScrollLines()), nil
 			}
 			// A stationary mouse over a bodyY-keyed transcript hover target would
 			// otherwise stay lit at the scrolled-away bodyY until the next real
@@ -1372,13 +1372,13 @@ func (m model) updateModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.scrollChat(m.chatPageScrollLines()), nil
 		case keyIs(msg, tea.KeyPgDown):
 			if m.transcriptDetailed {
-				return m, nil
+				return m.scrollChat(-m.chatPageScrollLines()), nil
 			}
 			m = m.clearHover()
 			return m.scrollChat(-m.chatPageScrollLines()), nil
 		case keyIs(msg, tea.KeyDown):
 			if m.transcriptDetailed {
-				return m, nil
+				return m.scrollChat(-1), nil
 			}
 			if m.pendingPermission != nil {
 				return m.movePermissionCursor(1), nil
@@ -1420,7 +1420,7 @@ func (m model) updateModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if m.transcriptDetailed {
-				return m, nil
+				return m.scrollChat(1), nil
 			}
 			if m.pendingPermission != nil {
 				return m.movePermissionCursor(-1), nil
@@ -2682,6 +2682,14 @@ func (m model) chatTranscriptViewport() (transcriptViewport, bool) {
 		return transcriptViewport{}, false
 	}
 	width := m.chatColumnWidth()
+	if m.transcriptDetailed {
+		items := m.transcriptBodyItems(width, "", true)
+		body := measureTranscriptBodyItems(items, m.transcriptBodyHeights)
+		header := detailedTranscriptHeader(width) + "\n" + zeroTheme.line.Render(strings.Repeat("-", width))
+		footer := m.detailedTranscriptFooter(width)
+		frame := m.scrollableTranscriptFrame(header, footer)
+		return transcriptViewportForLayout(body, frame, m.chatScrollOffset), true
+	}
 	items := m.transcriptBodyItems(width, "", false)
 	body := measureTranscriptBodyItems(items, m.transcriptBodyHeights)
 	frame := m.scrollableTranscriptFrame(m.pinnedTitleBar(width), m.footerView(width))

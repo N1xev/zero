@@ -243,9 +243,17 @@ func (m model) transcriptBodyItems(width int, emptyOverlay string, detailed bool
 		shownAny := false
 		// The detailed view shows the full transcript from index 0, not
 		// the managed region after m.flushed.
-		previousKind, havePreviousKind = previousVisibleTranscriptKind(m.transcript, m.flushed, rc)
+		startIdx := m.flushed
+		if detailed {
+			startIdx = 0
+		}
+		renderRowFn := transcriptRowDispatchFn(m.renderTranscriptRow)
+		if detailed {
+			renderRowFn = transcriptRowDispatchFn(m.renderTranscriptDetailedRow)
+		}
+		previousKind, havePreviousKind = previousVisibleTranscriptKind(m.transcript, startIdx, rc)
 		specialistSummaryEmitted := false
-		for index := m.flushed; index < len(m.transcript); index++ {
+		for index := startIdx; index < len(m.transcript); index++ {
 			row := m.transcript[index]
 			// A welcome row carries no Lime visual (the empty state replaced it)
 			// and a resolved tool call collapses into its result's card.
@@ -346,14 +354,18 @@ func (m model) transcriptBodyItems(width int, emptyOverlay string, detailed bool
 				}
 			}
 			rowIndex, transcriptRow := index, row
-			heightCacheKey, heightCacheStable := m.transcriptRowBodyHeightCacheKey(transcriptRow, contentWidth, rc)
+			bodyCap := cardBodyMaxLines
+			if detailed {
+				bodyCap = 0
+			}
+			heightCacheKey, heightCacheStable := m.transcriptRowBodyHeightCacheKeyOpts(transcriptRow, contentWidth, rc, bodyCap)
 			items = append(items, transcriptBodyItem{
 				kind:              transcriptBodyItemRow,
 				rowIndex:          rowIndex,
 				heightCacheKey:    heightCacheKey,
 				heightCacheStable: heightCacheStable,
 				render: func(startBodyY int) transcriptBodyRenderedItem {
-					rendered, selectable := m.renderTranscriptRow(rowIndex, transcriptRow, contentWidth, rc, startBodyY)
+					rendered, selectable := renderRowFn(rowIndex, transcriptRow, contentWidth, rc, startBodyY)
 					return m.finalizeTranscriptBodyRow(rendered, selectable, gutter, startBodyY)
 				},
 			})
@@ -1064,6 +1076,12 @@ func splitPlainAtDisplayWidth(text string, width int) (string, string) {
 // selection previously resolved against transcript rows that weren't even
 // visible while viewing a subagent/swarm child session.
 func (m model) transcriptHitTestSource() (header string, items []transcriptBodyItem, width int) {
+	if m.transcriptDetailed {
+		width = chatWidth(m.width)
+		header = detailedTranscriptHeader(width) + "\n" + zeroTheme.line.Render(strings.Repeat("-", width))
+		items = m.transcriptBodyItems(width, "", true)
+		return
+	}
 	if m.subchat.active {
 		width = chatWidth(m.width)
 		return renderSubchatNavBar(m.subchat.childSessionTitle, width), m.transcriptBodyItemsFromRows(m.subchat.childRows, width), width
@@ -1083,7 +1101,11 @@ func (m model) transcriptHitTestBlocked() bool {
 // (nearest-line fallback for scroll-driven selection extension).
 func (m model) transcriptHitTestLayout() (frame transcriptFrameLayout, window transcriptViewportWindow, layout transcriptBodyLayout) {
 	header, items, width := m.transcriptHitTestSource()
-	frame = m.scrollableTranscriptFrame(header, m.footerView(width))
+	footer := m.footerView(width)
+	if m.transcriptDetailed {
+		footer = m.detailedTranscriptFooter(width)
+	}
+	frame = m.scrollableTranscriptFrame(header, footer)
 	metrics := measureTranscriptBodyItems(items, m.transcriptBodyHeights)
 	window = transcriptViewportForLayout(metrics, frame, m.chatScrollOffset).window()
 	layout = layoutVisibleTranscriptBodyItems(items, metrics, window)
