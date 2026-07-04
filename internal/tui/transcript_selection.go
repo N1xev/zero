@@ -668,7 +668,6 @@ func (m model) transcriptRowBodyHeightCacheKeyOpts(row transcriptRow, width int,
 	return b.String(), stable
 }
 
-
 func (m model) renderTranscriptRow(rowIndex int, row transcriptRow, width int, rc rowContext, startBodyY int) (string, []transcriptSelectableLine) {
 	return m.renderTranscriptRowFn(rowIndex, row, width, rc, startBodyY, m.renderRow)
 }
