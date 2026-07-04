@@ -1374,23 +1374,14 @@ func (m model) updateModel(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 		case keyIs(msg, tea.KeyPgUp):
-			if m.transcriptDetailed {
-				return m.scrollChat(m.chatPageScrollLines()), nil
-			}
-			// A stationary mouse over a bodyY-keyed transcript hover target would
-			// otherwise stay lit at the scrolled-away bodyY until the next real
-			// motion event (see clearHover) — same reasoning as the wheel-scroll
-			// cases in mouse.go.
 			m = m.clearHover()
 			return m.scrollChat(m.chatPageScrollLines()), nil
 		case keyIs(msg, tea.KeyPgDown):
-			if m.transcriptDetailed {
-				return m.scrollChat(-m.chatPageScrollLines()), nil
-			}
 			m = m.clearHover()
 			return m.scrollChat(-m.chatPageScrollLines()), nil
 		case keyIs(msg, tea.KeyDown):
 			if m.transcriptDetailed {
+				m = m.clearHover()
 				return m.scrollChat(-1), nil
 			}
 			if m.pendingPermission != nil {
