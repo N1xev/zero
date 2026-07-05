@@ -118,7 +118,7 @@ func TestCoalescerFlushesOnRunSwitch(t *testing.T) {
 // before a following non-text message, never after it. Run with -race to catch
 // the interleaving CodeRabbit flagged.
 func TestCoalescerOrdersTextBeforeNonTextUnderConcurrency(t *testing.T) {
-	for iter := 0; iter < 200; iter++ {
+	for iter := range 200 {
 		rec := &recorder{}
 		c := newTextCoalescer(rec.forward)
 
