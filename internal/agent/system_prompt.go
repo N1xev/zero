@@ -388,10 +388,7 @@ func truncateGuidelineContent(content string, limit int) string {
 	if limit <= 0 {
 		return ""
 	}
-	cut := limit - len(truncationMarker)
-	if cut < 0 {
-		cut = 0
-	}
+	cut := max(limit-len(truncationMarker), 0)
 	for cut > 0 && !utf8.RuneStart(content[cut]) {
 		cut--
 	}
@@ -443,7 +440,7 @@ func projectGuidelineDirs(cwd, gitRoot string) []string {
 	}
 	dirs := []string{gitRoot}
 	cur := gitRoot
-	for _, seg := range strings.Split(rel, string(filepath.Separator)) {
+	for seg := range strings.SplitSeq(rel, string(filepath.Separator)) {
 		if seg == "" || seg == "." {
 			continue
 		}
@@ -636,8 +633,8 @@ func gitBranchForPrompt(cwd string) string {
 		return ""
 	}
 	ref := strings.TrimSpace(string(data))
-	if strings.HasPrefix(ref, "ref: ") {
-		return strings.TrimPrefix(strings.TrimPrefix(ref, "ref: "), "refs/heads/")
+	if after, ok := strings.CutPrefix(ref, "ref: "); ok {
+		return strings.TrimPrefix(after, "refs/heads/")
 	}
 	if len(ref) >= 7 {
 		return ref[:7]
