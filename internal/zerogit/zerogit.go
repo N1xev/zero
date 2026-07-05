@@ -262,7 +262,7 @@ func parseStatus(status string) []FileChange {
 
 func parseNameStatus(output string) []FileChange {
 	files := []FileChange{}
-	for _, line := range strings.Split(output, "\n") {
+	for line := range strings.SplitSeq(output, "\n") {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
@@ -469,10 +469,7 @@ func truncateString(value string, maxBytes int) (string, bool) {
 		marker := "\n" + redaction.RedactedSecret
 		budget := maxBytes - len(suffix) - len(marker)
 		if budget <= 0 {
-			allowed := maxBytes - len(suffix)
-			if allowed > len(redaction.RedactedSecret) {
-				allowed = len(redaction.RedactedSecret)
-			}
+			allowed := min(maxBytes-len(suffix), len(redaction.RedactedSecret))
 			return redaction.RedactedSecret[:allowed] + suffix, true
 		}
 		return cutGitRuneBoundary(value, budget) + marker + suffix, true
@@ -606,7 +603,7 @@ func Push(ctx context.Context, options PushOptions) (PushResult, error) {
 
 func isDefaultBranch(ctx context.Context, runGit Runner, dir, remote, branch string) bool {
 	if out, err := gitOutput(ctx, runGit, dir, "ls-remote", "--symref", remote, "HEAD"); err == nil {
-		for _, line := range strings.Split(out, "\n") {
+		for line := range strings.SplitSeq(out, "\n") {
 			line = strings.TrimSpace(line)
 			if strings.HasPrefix(line, "ref: refs/heads/") && strings.HasSuffix(line, "\tHEAD") {
 				symref := strings.TrimPrefix(line, "ref: refs/heads/")
