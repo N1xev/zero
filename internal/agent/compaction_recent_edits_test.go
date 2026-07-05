@@ -91,7 +91,7 @@ func TestRecentEditsMergeNewerWins(t *testing.T) {
 func TestRecentEditsCapKeepsReeditedFile(t *testing.T) {
 	// Earlier compaction preserved exactly maxRecentEdits files, f0 the oldest.
 	older := make([]skillEntry, 0, maxRecentEdits)
-	for i := 0; i < maxRecentEdits; i++ {
+	for i := range maxRecentEdits {
 		older = append(older, skillEntry{name: fmt.Sprintf("f%d.go", i), body: "old"})
 	}
 	// Fresh window re-edits the OLDEST file (f0) and adds a brand-new file, so the

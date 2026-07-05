@@ -134,7 +134,7 @@ func TestJitteredBackoffStaysInBounds(t *testing.T) {
 	// so backoff still grows attempt over attempt while decorrelating retries.
 	for attempt := 1; attempt <= 5; attempt++ {
 		base := backoffFor(attempt)
-		for i := 0; i < 200; i++ {
+		for range 200 {
 			got := jitteredBackoff(attempt)
 			if got < base || got > base+base/2 {
 				t.Fatalf("attempt %d jittered backoff %v out of [%v, %v]", attempt, got, base, base+base/2)
