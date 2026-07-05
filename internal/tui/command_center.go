@@ -274,10 +274,7 @@ func (m model) resumeText() string {
 			}},
 		})
 	}
-	limit := len(sessions)
-	if limit > 8 {
-		limit = 8
-	}
+	limit := min(len(sessions), 8)
 	// The list renders as stacked cards (renderSessionsCards); each record is
 	// one session's fields joined by the unit separator so the renderer can
 	// restyle them at the current width. Flow and data are unchanged.

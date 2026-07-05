@@ -2461,10 +2461,7 @@ func (m model) pinnedPlanMaxHeight() int {
 	if m.height <= 0 {
 		return 12
 	}
-	budget := m.height / 3
-	if budget < 3 {
-		budget = 3
-	}
+	budget := max(m.height/3, 3)
 	return budget
 }
 
@@ -2523,10 +2520,7 @@ func (m model) scrollableTranscriptFrame(header string, footer string) transcrip
 		}
 	}
 
-	bodyHeight := m.height - len(headerLines) - len(footerLines)
-	if bodyHeight < 1 {
-		bodyHeight = 1
-	}
+	bodyHeight := max(m.height-len(headerLines)-len(footerLines), 1)
 	width := m.chatColumnWidth()
 	footerTop := len(headerLines) + bodyHeight
 	frame := transcriptFrameLayout{
@@ -3054,10 +3048,7 @@ func reasoningPreviewLines(reasoning string, width int) []string {
 	if len(lines) > 2 {
 		lines = lines[len(lines)-2:]
 	}
-	avail := width - 2
-	if avail < 8 {
-		avail = 8
-	}
+	avail := max(width-2, 8)
 	out := make([]string, 0, len(lines))
 	for _, line := range lines {
 		out = append(out, "  "+zeroTheme.faint.Render(previewTail(line, avail)))

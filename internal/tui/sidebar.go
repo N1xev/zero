@@ -919,10 +919,7 @@ func (m model) sidebarTokenText() string {
 // to their column widths and to the same row count first, so every joined row
 // is exactly chatWidth + 1 + sidebarWidth cells and the columns stay aligned.
 func joinColumns(chat []string, sidebar []string, chatW, sidebarW int) []string {
-	rows := len(chat)
-	if len(sidebar) > rows {
-		rows = len(sidebar)
-	}
+	rows := max(len(sidebar), len(chat))
 	// A cell of air on each side of the rule (" │ ") so the columns don't butt
 	// flush against it. The chat side gets its gutter from the leading space; the
 	// sidebar side from the trailing space (plus items' own leading inset, which

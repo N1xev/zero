@@ -1374,13 +1374,7 @@ func setupModelMaxVisible(height int, total int) int {
 	if total <= 0 {
 		return 0
 	}
-	maxVisible := height - 12
-	if maxVisible < 5 {
-		maxVisible = 5
-	}
-	if maxVisible > 18 {
-		maxVisible = 18
-	}
+	maxVisible := min(max(height-12, 5), 18)
 	if maxVisible > total {
 		return total
 	}
@@ -1585,10 +1579,7 @@ func setupProviderMaxVisible(height int, total int) int {
 	if total <= 0 {
 		return 0
 	}
-	maxVisible := height - 8
-	if maxVisible < 6 {
-		maxVisible = 6
-	}
+	maxVisible := max(height-8, 6)
 	if maxVisible > total {
 		return total
 	}

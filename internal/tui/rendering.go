@@ -376,13 +376,7 @@ func displayPath(cwd string, p string) string {
 
 // sayMeasure is the narrow prose wrap width for compact secondary text.
 func sayMeasure(width int) int {
-	measure := width - 4
-	if measure > 74 {
-		measure = 74
-	}
-	if measure < 16 {
-		measure = 16
-	}
+	measure := max(min(width-4, 74), 16)
 	return measure
 }
 
@@ -396,13 +390,7 @@ const assistantMeasureCap = 96
 // assistantMeasureCap, with a 16-col floor. Left-aligned (the cap just shortens
 // lines; it does not center).
 func assistantMeasure(width int) int {
-	measure := width
-	if measure > assistantMeasureCap {
-		measure = assistantMeasureCap
-	}
-	if measure < 16 {
-		measure = 16
-	}
+	measure := max(min(width, assistantMeasureCap), 16)
 	return measure
 }
 
@@ -1248,13 +1236,7 @@ func renderAskUserQuestionnaire(prompt pendingAskUserPrompt, input string, width
 	// so existing fill(style) call sites render bare foregrounds on that canvas.
 	fill := func(style lipgloss.Style) lipgloss.Style { return style }
 	confirm := len(questions)
-	active := prompt.active
-	if active < 0 {
-		active = 0
-	}
-	if active > confirm {
-		active = confirm
-	}
+	active := min(max(prompt.active, 0), confirm)
 	multi := len(questions) > 1
 
 	var lines []string
