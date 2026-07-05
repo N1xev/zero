@@ -417,10 +417,7 @@ func capBody(body string) string {
 	if len(body) <= maxPreservedSkillBytes {
 		return body
 	}
-	limit := maxPreservedSkillBytes - len(truncationNote)
-	if limit < 0 {
-		limit = 0
-	}
+	limit := max(maxPreservedSkillBytes-len(truncationNote), 0)
 	// Walk back to the start of a rune so a multibyte sequence is never split.
 	for limit > 0 && !utf8.RuneStart(body[limit]) {
 		limit--

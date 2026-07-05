@@ -388,10 +388,7 @@ func truncateGuidelineContent(content string, limit int) string {
 	if limit <= 0 {
 		return ""
 	}
-	cut := limit - len(truncationMarker)
-	if cut < 0 {
-		cut = 0
-	}
+	cut := max(limit-len(truncationMarker), 0)
 	for cut > 0 && !utf8.RuneStart(content[cut]) {
 		cut--
 	}

@@ -565,10 +565,7 @@ func (store *AuditStore) lastSequence() (int, error) {
 		return 0, nil
 	}
 	const tailWindow = 8 * 1024
-	start := size - tailWindow
-	if start < 0 {
-		start = 0
-	}
+	start := max(size-tailWindow, 0)
 	buf := make([]byte, size-start)
 	// ReadAt may return io.EOF with a short read if the file shrank between Stat
 	// and here; treat EOF as non-fatal and use only the bytes actually read.
