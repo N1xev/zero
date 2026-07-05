@@ -25,10 +25,7 @@ func ReadClipboardImage() ([]byte, string, error) {
 		return nil, "", nil
 	}
 	// Sniff the media type from the bytes — don't trust the clipboard's claim.
-	sniffLen := len(data)
-	if sniffLen > 512 {
-		sniffLen = 512
-	}
+	sniffLen := min(len(data), 512)
 	mediaType := zeroruntime.NormalizeImageMediaType(http.DetectContentType(data[:sniffLen]))
 	if mediaType == "" {
 		return nil, "", fmt.Errorf("clipboard image is not a supported type (allowed: png, jpeg, gif, webp)")

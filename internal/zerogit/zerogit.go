@@ -469,10 +469,7 @@ func truncateString(value string, maxBytes int) (string, bool) {
 		marker := "\n" + redaction.RedactedSecret
 		budget := maxBytes - len(suffix) - len(marker)
 		if budget <= 0 {
-			allowed := maxBytes - len(suffix)
-			if allowed > len(redaction.RedactedSecret) {
-				allowed = len(redaction.RedactedSecret)
-			}
+			allowed := min(maxBytes-len(suffix), len(redaction.RedactedSecret))
 			return redaction.RedactedSecret[:allowed] + suffix, true
 		}
 		return cutGitRuneBoundary(value, budget) + marker + suffix, true

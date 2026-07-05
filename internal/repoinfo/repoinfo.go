@@ -217,10 +217,7 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 			}
 		}
 		if found {
-			days := int((now.Unix() - oldest) / 86400)
-			if days < 0 {
-				days = 0
-			}
+			days := max(int((now.Unix()-oldest)/86400), 0)
 			info.AgeDays = &days
 		}
 	}
