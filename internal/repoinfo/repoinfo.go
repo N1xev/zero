@@ -104,15 +104,15 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 	hasPackageJSON := false
 	hasCargoToml := false
 
-	for _, entry := range strings.Split(tree, "\x00") {
+	for entry := range strings.SplitSeq(tree, "\x00") {
 		if entry == "" {
 			continue
 		}
-		tab := strings.IndexByte(entry, '\t')
-		if tab < 0 {
+		before, after, ok := strings.Cut(entry, "\t")
+		if !ok {
 			continue
 		}
-		fields := strings.Fields(entry[:tab])
+		fields := strings.Fields(before)
 		if len(fields) < 4 {
 			continue
 		}
@@ -120,7 +120,7 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 		if convErr != nil {
 			continue
 		}
-		filePath := entry[tab+1:]
+		filePath := after
 		info.FileCount++
 
 		// Count every directory on the path to this file, including "passthrough"
@@ -209,7 +209,7 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 	// for a normal repo; take the oldest across multiple roots).
 	if roots, err := run(ctx, dir, "log", "--max-parents=0", "--format=%ct"); err == nil {
 		oldest, found := int64(0), false
-		for _, line := range strings.Split(roots, "\n") {
+		for line := range strings.SplitSeq(roots, "\n") {
 			if ts, perr := strconv.ParseInt(strings.TrimSpace(line), 10, 64); perr == nil {
 				if !found || ts < oldest {
 					oldest, found = ts, true
@@ -217,10 +217,7 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 			}
 		}
 		if found {
-			days := int((now.Unix() - oldest) / 86400)
-			if days < 0 {
-				days = 0
-			}
+			days := max(int((now.Unix()-oldest)/86400), 0)
 			info.AgeDays = &days
 		}
 	}
@@ -239,7 +236,7 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 	}
 	if branches, err := run(ctx, dir, "branch", "-a"); err == nil {
 		set := map[string]bool{}
-		for _, line := range strings.Split(branches, "\n") {
+		for line := range strings.SplitSeq(branches, "\n") {
 			line = strings.TrimSpace(line)
 			if line == "" || strings.Contains(line, "->") {
 				continue
@@ -254,8 +251,8 @@ func Collect(ctx context.Context, opts Options) (Info, error) {
 			// If it's a remote branch, extract the branch name.
 			// E.g., remotes/origin/main -> main
 			// E.g., remotes/origin/feature/xyz -> feature/xyz
-			if strings.HasPrefix(line, "remotes/") {
-				line = strings.TrimPrefix(line, "remotes/")
+			if after, ok := strings.CutPrefix(line, "remotes/"); ok {
+				line = after
 				if slashIdx := strings.Index(line, "/"); slashIdx != -1 {
 					line = line[slashIdx+1:]
 				}
@@ -313,7 +310,7 @@ func sanitizeRemoteURL(raw string) string {
 // countUnique counts distinct non-empty trimmed lines.
 func countUnique(out string) *int {
 	set := map[string]bool{}
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if line = strings.TrimSpace(line); line != "" {
 			set[line] = true
 		}
@@ -371,7 +368,7 @@ func defaultRunGit(ctx context.Context, dir string, args ...string) (string, err
 
 func countNonEmptyLines(s string) int {
 	count := 0
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		if strings.TrimSpace(line) != "" {
 			count++
 		}
