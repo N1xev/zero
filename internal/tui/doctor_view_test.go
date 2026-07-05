@@ -240,7 +240,8 @@ func assertRowsContain(t *testing.T, rows []commandRow, wants ...string) {
 	t.Helper()
 	var text strings.Builder
 	for _, row := range rows {
-		text.WriteString(row.Text);text.WriteString("\n")
+		text.WriteString(row.Text)
+		text.WriteString("\n")
 	}
 	for _, want := range wants {
 		if !strings.Contains(text.String(), want) {
@@ -253,7 +254,8 @@ func assertRowsDoNotContain(t *testing.T, rows []commandRow, wants ...string) {
 	t.Helper()
 	var text strings.Builder
 	for _, row := range rows {
-		text.WriteString(row.Text);text.WriteString("\n")
+		text.WriteString(row.Text)
+		text.WriteString("\n")
 	}
 	for _, want := range wants {
 		if strings.Contains(text.String(), want) {
