@@ -56,10 +56,7 @@ func buildMinimalPDF(text string) []byte {
 }
 
 func minimalPDFPageHeight(text string) int {
-	lines := (len(text) + minimalPDFTextChunkSize - 1) / minimalPDFTextChunkSize
-	if lines < 1 {
-		lines = 1
-	}
+	lines := max((len(text)+minimalPDFTextChunkSize-1)/minimalPDFTextChunkSize, 1)
 	height := 184 + lines*10
 	if height < 792 {
 		return 792
