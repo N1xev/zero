@@ -136,13 +136,7 @@ func Backoff(ctx context.Context, attempt int, retryAfter time.Duration) bool {
 func backoffWait(attempt int, retryAfter time.Duration) time.Duration {
 	wait := retryAfter
 	if wait <= 0 {
-		exponent := attempt - 1
-		if exponent > 5 {
-			exponent = 5
-		}
-		if exponent < 0 {
-			exponent = 0
-		}
+		exponent := max(min(attempt-1, 5), 0)
 		wait = retryBackoffBase * time.Duration(1<<exponent)
 	}
 	if wait > maxBackoff {
