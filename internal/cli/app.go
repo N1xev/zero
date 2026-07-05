@@ -19,6 +19,7 @@ import (
 	"github.com/Gitlawb/zero/internal/hooks"
 	"github.com/Gitlawb/zero/internal/localcontrol"
 	"github.com/Gitlawb/zero/internal/mcp"
+	"github.com/Gitlawb/zero/internal/modelregistry"
 	"github.com/Gitlawb/zero/internal/observability"
 	"github.com/Gitlawb/zero/internal/plugins"
 	"github.com/Gitlawb/zero/internal/providerhealth"
@@ -77,6 +78,8 @@ type appDeps struct {
 	runAgentEval           func(context.Context, agentEvalOptions) (agentEvalReport, error)
 	inspectChanges         func(context.Context, zerogit.InspectOptions) (zerogit.ChangeSummary, error)
 	commitChanges          func(context.Context, zerogit.CommitOptions) (zerogit.CommitResult, error)
+	pushChanges            func(context.Context, zerogit.PushOptions) (zerogit.PushResult, error)
+	createPR               func(context.Context, zerogit.PROptions) (zerogit.PRResult, error)
 	runTUI                 func(context.Context, tui.Options) int
 	runEditor              func(string) error
 	checkUpdate            func(context.Context, update.Options) (update.Result, error)
@@ -178,6 +181,8 @@ func defaultAppDeps() appDeps {
 		runAgentEval:     defaultRunAgentEval,
 		inspectChanges:   zerogit.Inspect,
 		commitChanges:    zerogit.Commit,
+		pushChanges:      zerogit.Push,
+		createPR:         zerogit.CreatePR,
 		runTUI:           tui.Run,
 		runEditor:        openEditor,
 		checkUpdate:      update.Check,
@@ -228,6 +233,12 @@ func runWithDeps(args []string, stdout io.Writer, stderr io.Writer, deps appDeps
 	// a brief notice, rather than a raw stack trace dumped at the user.
 	defer observability.Recover(observability.DefaultCrashDir(), "cli", stderr, &exitCode)
 	deps = fillAppDeps(deps)
+
+	// CLI runs opt into the models.dev overlay (cached live context limits and
+	// pricing on top of the curated catalog). Explicitly enabled here — and only
+	// here — so library consumers and hermetic tests are never perturbed by a
+	// cache file on the machine. The refresh itself is fired in exec/TUI startup.
+	modelregistry.EnableModelsDevOverlay()
 
 	addDirs, args, err := splitLeadingAddDirFlags(args)
 	if err != nil {
@@ -510,6 +521,12 @@ func fillAppDeps(deps appDeps) appDeps {
 	if deps.commitChanges == nil {
 		deps.commitChanges = defaults.commitChanges
 	}
+	if deps.pushChanges == nil {
+		deps.pushChanges = defaults.pushChanges
+	}
+	if deps.createPR == nil {
+		deps.createPR = defaults.createPR
+	}
 	if deps.runTUI == nil {
 		deps.runTUI = defaults.runTUI
 	}
@@ -544,6 +561,11 @@ func runInteractiveTUI(stderr io.Writer, deps appDeps, permissionMode agent.Perm
 }
 
 func runInteractiveTUIWithSetup(stderr io.Writer, deps appDeps, permissionMode agent.PermissionMode, addDirs []string, theme string, forceSetup bool) int {
+	// Refresh the models.dev pricing/limits cache in the background when stale;
+	// the overlay is read at registry construction from the cache file, so this
+	// benefits the next run and never blocks or fails this one.
+	go func() { _ = modelregistry.RefreshModelsDevCache(context.Background()) }()
+
 	workspaceRoot, err := deps.getwd()
 	if err != nil {
 		return writeAppError(stderr, "failed to resolve workspace: "+err.Error(), 1)

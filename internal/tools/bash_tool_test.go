@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,18 @@ import (
 
 func TestMain(m *testing.M) {
 	if len(os.Args) >= 3 && os.Args[1] == "--zero-bash-helper" {
+		if os.Args[2] == "echo-arg" {
+			// Echoes back exactly the one argument it received, to verify a
+			// quoted, space-and-slash-containing argument (the same shape as
+			// `python -c "print(15 / 3)"`) survives the shell invocation
+			// intact instead of being truncated/corrupted.
+			if len(os.Args) < 4 {
+				fmt.Fprintln(os.Stderr, "echo-arg requires exactly one argument")
+				os.Exit(1)
+			}
+			fmt.Println(os.Args[3])
+			return
+		}
 		runBashToolHelper(os.Args[2])
 		return
 	}
@@ -237,6 +250,43 @@ func TestBashToolRunsCommandInWorkspace(t *testing.T) {
 	}
 	if result.Meta["cwd"] != "." {
 		t.Fatalf("expected cwd metadata ., got %q", result.Meta["cwd"])
+	}
+}
+
+// A command with runaway output must not be buffered whole in memory: the capture
+// is bounded to head+tail, yet raw_bytes still reports the true (much larger) size.
+// If capture were unbounded this would balloon Zero's memory before truncation.
+func TestBashToolBoundsRunawayOutputCapture(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a POSIX shell pipeline (yes | head)")
+	}
+	const produced = 500000 // ~5× the 96 KiB budget
+
+	result := NewBashTool(t.TempDir()).Run(context.Background(), map[string]any{
+		"command": fmt.Sprintf("yes ABCDEFGH | head -c %d", produced),
+	})
+
+	if result.Status != StatusOK {
+		t.Fatalf("expected ok status, got %s: %s", result.Status, result.Output)
+	}
+	if !result.Truncated || result.Meta["truncated"] != "true" {
+		t.Fatalf("runaway output should be flagged truncated, meta=%v", result.Meta)
+	}
+	if !strings.Contains(result.Output, "output truncated") {
+		t.Fatalf("expected a truncation marker in output")
+	}
+	// The emitted (model-visible) text is capped near the budget...
+	if len(result.Output) > bashOutputBudgetBytes+1024 {
+		t.Fatalf("emitted %d bytes far exceeds budget %d", len(result.Output), bashOutputBudgetBytes)
+	}
+	// ...but raw_bytes reflects the full stream, proving the total was counted while
+	// only a bounded slice was ever held (raw >> the ~2×budget retention cap).
+	raw, err := strconv.Atoi(result.Meta["raw_bytes"])
+	if err != nil {
+		t.Fatalf("raw_bytes not an int: %q", result.Meta["raw_bytes"])
+	}
+	if raw < produced {
+		t.Fatalf("raw_bytes = %d, want >= %d (full stream counted)", raw, produced)
 	}
 }
 
@@ -532,6 +582,68 @@ func TestBashToolAllowsNonInteractiveCommand(t *testing.T) {
 	}
 	if result.Meta["safety_block"] != "" {
 		t.Fatalf("did not expect a safety block, got %#v", result.Meta)
+	}
+}
+
+// TestBashToolPreservesEmbeddedQuotesOnWindows pins a real, previously-broken
+// case: passing commandText as a normal exec.Cmd argument makes Go wrap it in
+// an outer pair of quotes (it contains spaces) with its own quotes escaped as
+// \", and cmd.exe's /C remainder parsing strips the first and last literal
+// quote character in that remainder without undoing the backslash-escaping -
+// corrupting a command whose own text contains embedded double quotes,
+// exactly the shape of `python -c "print(15 / 3)"`, `git commit -m
+// "message"`, `node -e "..."`. Before the fix, the helper below received a
+// truncated, mis-quoted argument (starting with a stray literal `"`) instead
+// of the text between the quotes.
+func TestBashToolPreservesEmbeddedQuotesOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("cmd.exe /S/C quote-remainder parsing is Windows-specific")
+	}
+	root := t.TempDir()
+	executable := shellQuote(os.Args[0])
+	// Space and a slash: the two characters whose position in the original
+	// bug report's SyntaxError ("print(15, truncated right before the /")
+	// showed exactly where the corruption happened.
+	commandText := executable + ` --zero-bash-helper echo-arg "hello / world"`
+
+	result := NewBashTool(root).Run(context.Background(), map[string]any{
+		"command": commandText,
+	})
+
+	if result.Status != StatusOK {
+		t.Fatalf("expected ok status, got %s: %s", result.Status, result.Output)
+	}
+	if !strings.Contains(result.Output, "hello / world") {
+		t.Fatalf("expected the embedded-quote argument to survive intact, got %q", result.Output)
+	}
+}
+
+// TestBashToolRunsCommandLineForLoopSyntax pins cmd.exe command-line syntax,
+// not batch-file syntax: a `for %i in (...) do ...` loop with a single
+// percent sign is valid typed directly at a cmd.exe prompt (or via
+// `cmd /C "..."`), but requires %%i inside an actual .bat/.cmd FILE, because
+// batch files perform an extra pass of percent-substitution before FOR ever
+// runs, consuming the single percent so the loop variable never binds. An
+// earlier version of this fix ran commandText from a temporary .cmd file
+// instead of passing it straight through to cmd.exe's /C remainder, which
+// silently broke single-percent syntax like this.
+func TestBashToolRunsCommandLineForLoopSyntax(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("cmd.exe command-line vs batch-file parsing is Windows-specific")
+	}
+	root := t.TempDir()
+
+	result := NewBashTool(root).Run(context.Background(), map[string]any{
+		"command": "for %i in (1 2 3) do echo %i",
+	})
+
+	if result.Status != StatusOK {
+		t.Fatalf("expected ok status, got %s: %s", result.Status, result.Output)
+	}
+	for _, want := range []string{"1", "2", "3"} {
+		if !strings.Contains(result.Output, want) {
+			t.Fatalf("expected the for-loop to expand %%i to %q, got %q", want, result.Output)
+		}
 	}
 }
 
